@@ -1,4 +1,1 @@
-@echo off
-for /f "delims=" %%i in ('"C:\Program Files (x86)\AnyDesk\AnyDesk.exe" --get-id') do set ID=%%i 
-echo AnyDesk ID is: %ID%
-pause
+echo @lolo@654321 | "C:\Program Files (x86)\AnyDesk\AnyDesk.exe" --set-password _unattended_access
