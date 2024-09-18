@@ -349,3 +349,4 @@ http://rewtdance.blogspot.com/2012/06/exploiting-windows-2008-group-policy.html
 
     catch { Write-Error $Error[0] }
 }
+Get-GPPPassword 
