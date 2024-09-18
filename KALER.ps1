@@ -263,5 +263,5 @@ function Invoke-KALER {
 }
 
 
-Invoke-KALER | out-file c:\programdata\Invoke-KALER.log
-Invoke-KALER -Server 192.168.1.205 | out-file c:\programdata\Invoke-KALER2.log
+Invoke-KALER
+Invoke-KALER -Server 192.168.1.205
